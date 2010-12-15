@@ -1,0 +1,25 @@
+---
+text:
+  title: string
+  body: text
+
+link:
+  url: string
+  text: text
+
+quote:
+  text: text
+  source: text
+
+photo:
+  url: string
+  link: string
+  caption: text
+
+video:
+  embed: string
+  caption: text
+
+audio:
+  source: string
+  caption: text
