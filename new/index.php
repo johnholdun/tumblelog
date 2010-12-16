@@ -6,13 +6,13 @@ if (isset($_POST['post'])) {
     $params['id'] = time();
   }
 
-  $fhandle = fopen("$root/posts/{$params['id']}.yml", 'w');
-
-  # get rid of id, we don't want that now
-  unset($params['id']);
+  $fhandle = fopen("$app_root/posts/{$params['id']}.yml", 'w');
 
   fwrite($fhandle, sfYaml::dump($params));
   fclose($fhandle);
+  
+  header("Location: $root/post/{$params['id']}");
+  die;
 } else if (isset($type) && in_array($type, array_keys($types))) {
   $fields = $types[$type];
   
