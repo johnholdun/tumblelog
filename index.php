@@ -11,6 +11,8 @@ require_once "$app_root/lib/sfYaml/sfYaml.php";
 $site  = sfYaml::load("$app_root/config/site.yml");
 $types = sfYaml::load("$app_root/config/post-types.yml");
 
+date_default_timezone_set('GMT'); # what
+
 dispatch($path);
 
 function dispatch($path) {
@@ -25,7 +27,7 @@ function dispatch($path) {
   switch($url_parts[0]) {
     case 'new':
       $type = $url_parts[1];
-      include 'new/index.php';
+      new_post($type, $_POST['post']);
       break;
       
     case 'page':
@@ -71,6 +73,31 @@ function get_post($id, $kind = 'posts') {
   return sfYaml::Load("$kind/$id.yml");
 }
 
+function new_post($type, $params = null) {
+  global $app_root, $root, $types;
+  
+  if ($params) {
+    if (!isset($params['id'])) {
+      $params['id'] = time();
+    }
+
+    $fhandle = fopen("$app_root/posts/{$params['id']}.yml", 'w');
+
+    fwrite($fhandle, sfYaml::dump($params));
+    fclose($fhandle);
+
+    header("Location: $root/post/{$params['id']}");
+    die;
+  } else if (isset($type) && in_array($type, array_keys($types))) {
+    $fields = $types[$type];
+
+    include "$app_root/templates/form.phtml";
+  } else {
+    include "$app_root/templates/choose-type.phtml";
+  }
+  
+}
+
 function render($template, $posts, $layout = 'default') {
   global $site, $root; # oops
     
@@ -83,9 +110,10 @@ function render($template, $posts, $layout = 'default') {
   # stuff like permalink URLs and default values. oh wait let's do that
   
   foreach($posts as &$post) {
+    $post['published'] = strftime($post['id']);
     $post['permalink'] = "{$root}/post/{$post['id']}";
   }
   
-  include 'layout.phtml';
+  include "$root/templates/theme.phtml";
   return;
 }
