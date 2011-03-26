@@ -128,9 +128,9 @@ function new_post($type, $params = null) {
         $param = Markdown(SmartyPants(stripslashes($param)));
       }
 
-      // $param = superhtmlentities($param);
+      $param = superhtmlentities($param);
     }
-
+    
     fwrite($fhandle, sfYaml::dump($params));
     fclose($fhandle);
 
@@ -189,17 +189,12 @@ function redirect_to($url) {
 }
 
 function superhtmlentities($string) { 
-  $entities = array(128 => 'euro', 130 => 'sbquo', 131 => 'fnof', 132 => 'bdquo', 133 => 'hellip', 134 => 'dagger', 135 => 'Dagger', 136 => 'circ', 137 => 'permil', 138 => 'Scaron', 139 => 'lsaquo', 140 => 'OElig', 145 => 'lsquo', 146 => 'rsquo', 147 => 'ldquo', 148 => 'rdquo', 149 => 'bull', 150 => '#45', 151 => 'mdash', 152 => 'tilde', 153 => 'trade', 154 => 'scaron', 155 => 'rsaquo', 156 => 'oelig', 159 => 'Yuml'); 
+  $string = str_split($string);
 
-  foreach(str_split($string) as $char) { 
+  foreach($string as &$char) { 
     $num = ord($char);
-    if (array_key_exists($num, $entities)) { 
-      if ($num == 150) { $output .= '-'; }
-      else { $output .= "&{$entities[$num]};"; }
-    } else { 
-      if ($num < 127 || $num > 159) {  $output .= $char; }
-    } 
+    if ($num > 127) { $char = "&#{$num};"; }
   }
   
-  return $output; 
+  return implode('', $string); 
 }
