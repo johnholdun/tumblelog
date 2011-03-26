@@ -2,6 +2,7 @@
 
 $app_root = dirname(__FILE__);
 $root = str_replace('/' . basename(__FILE__), '', $_SERVER['PHP_SELF']);
+$method = strtolower($_SERVER['REQUEST_METHOD']);
 $path = str_replace($root, '', $_SERVER['REQUEST_URI']);
 if (substr($path, -1) == '/') {
   $path = substr($path, 0, -1);
@@ -13,16 +14,20 @@ $types = sfYaml::load("$app_root/config/post-types.yml");
 
 date_default_timezone_set('GMT'); # what
 
-dispatch($path);
+dispatch($method, $path);
 
-function dispatch($path) {
+function dispatch($method, $path) {
   global $app_root, $root, $types;
   
   $url_parts = explode('/', substr($path, 1));
   
   if (count($url_parts) == 1 && $url_parts[0] == '') {
     $url_parts = array('page', 0);
-  } else if (file_exists($public_path = "$app_root/public/$path")) {
+  } else if ($method == 'get' && file_exists($public_path = "$app_root/public/$path")) {
+    # allow files in the public directory to pass through
+    # (stripping public/ from their filenames, natch)
+
+    # first learn a little something about content types
     $filetypes = array(
       'css' => 'text/css',
       'js'  => 'text/javascript'
@@ -43,12 +48,23 @@ function dispatch($path) {
       break;
       
     case 'page':
-      render('posts', array('posts' => get_posts('posts', intval($url_parts[1]))));
+      render('posts', array('index' => true, 'permalink' => false, 'posts' => get_posts('posts', intval($url_parts[1]))));
       break;
       
     case 'post':
-      render('posts', array('posts' => array(get_post($url_parts[1]))));
+      render('posts', array('index' => false, 'permalink' => true, 'posts' => array(get_post($url_parts[1]))));
       break;
+      
+    case 'edit':
+      $post_id = $url_parts[1];
+      edit_post($post_id, $_POST['post']);
+      
+    case 'delete':
+      if ($method == 'post') {
+        $post_id = $url_parts[1];
+        delete_post($post_id);
+        redirect_to($root);
+      }
   }    
 }
 
@@ -105,7 +121,7 @@ function new_post($type, $params = null) {
     fwrite($fhandle, sfYaml::dump($params));
     fclose($fhandle);
 
-    header("Location: $root/post/{$params['id']}");
+    redirect_to("$root/post/{$params['id']}");
     die;
   } else if (isset($type) && in_array($type, array_keys($types))) {
     $fields = $types[$type];
@@ -115,6 +131,25 @@ function new_post($type, $params = null) {
     render('choose-type', array('types' => $types), 'internal');
   }
   
+}
+
+function edit_post($id, $params = null) {
+  global $app_root, $root, $types;
+  
+  if ($params) {
+    new_post(null, $params);
+    die;
+  } else {
+    $post = sfYaml::load("posts/$id.yml");
+    $fields = $types[$post['type']];
+    
+    render('form', array('fields' => $fields, 'type' => $type, 'post' => $post), 'internal');
+  }
+}
+
+function delete_post($id) {
+  unlink("posts/$id.yml");
+  redirect_to($root);
 }
 
 function render($template, $data, $layout = 'theme') {
@@ -134,4 +169,8 @@ function render($template, $data, $layout = 'theme') {
   
   include "$app_root/templates/$layout.phtml";
   return;
+}
+
+function redirect_to($url) {
+  header("Location: $url");
 }

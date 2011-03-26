@@ -1,4 +1,10 @@
-<? $title = "Make yourself a nice new little $type post there why don&rsquo;t you"; ?>
+<?
+  $title = "Make yourself a nice $type post there why don&rsquo;t you";
+  if ($post) {
+    $title = "Just go on ahead and edit this here {$post['type']} post then";
+    $type = $post['type'];
+  }
+?>
 <form method="post">
   <ul>
     <? foreach ($fields as $field => $field_type):
@@ -6,17 +12,24 @@
         $autofocus = ' autofocus';
       } else {
         $autofocus = '';
-      } ?>
+      }
+      if ($post) {
+        $value = $post[$field];
+      }
+      ?>
       <li>
         <label for="post_<?= $field ?>"><?= ucfirst($field) ?></label>
         <? if ($field_type == 'text'): ?>
-          <textarea id="post_<?= $field ?>" name="post[<?= $field ?>]"<?= $autofocus ?>></textarea>
+          <textarea id="post_<?= $field ?>" name="post[<?= $field ?>]"<?= $autofocus ?>><?= $value ?></textarea>
         <? else: ?>
-           <input type="text" id="post_<?= $field ?>" name="post[<?= $field ?>]"<?= $autofocus ?>>
+           <input type="text" id="post_<?= $field ?>" name="post[<?= $field ?>]"<?= $autofocus ?> value="<?= $value ?>">
         <? endif; ?>
       </li>
     <? endforeach; ?>
     <li class="buttons">
+      <? if ($post): ?>
+        <input type="hidden" name="post[id]" value="<?= $post['id'] ?>">
+      <? endif; ?>
       <input type="hidden" name="post[type]" value="<?= $type ?>">
       <button>Save</button>
     </li>
