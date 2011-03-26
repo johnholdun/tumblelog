@@ -1,10 +1,16 @@
 <?php
 
-require_once "./lib/markdown.php";
-require_once "./lib/smartypants.php";
-require_once "./lib/sfYaml/sfYaml.php";
+require_once 'lib/markdown.php';
+require_once 'lib/smartypants.php';
+require_once 'lib/sfYaml/sfYaml.php';
 
-require_once "./config.php";
+try {
+  require_once 'config.php';
+} catch (Exception $e) {
+  require_once 'install.php';
+  die;
+}
+
 require_once "./posts/post_slugs.php";
 
 $env['post-slugs'] = $post_slugs;
@@ -150,7 +156,12 @@ function edit_post($id, $params = null) {
 function delete_post($id) {
   global $env;
   
+  $post = get_post($id);
   unlink("posts/$id.yml");
+  
+  unset($env['post-slugs'][$post['slug']]);
+  save_slugs();
+  
   redirect_to($env['root']);
 }
 
@@ -171,7 +182,7 @@ function save_post($params) {
         if (!strlen($value)) { continue; }
         $field_type = $env['post-types'][$params['type']][$field];
         if ($field_type == 'string' || $field_type == 'text') {
-          $slugified_words = explode(' ', preg_replace('/[^a-z0-9 ]/', '', strip_tags(strtolower($value))));
+          $slugified_words = explode(' ', preg_replace('/[^a-z0-9 -]/', '', trim(strtolower(strip_tags($value)))));
           $slug = array_shift($slugified_words);
           foreach ($slugified_words as $word) {
             if (strlen($slug . "-$word") <= 30) {
@@ -189,6 +200,9 @@ function save_post($params) {
         }
       }
     }
+  } else {
+    # make sure it's good anyway though
+    $params['slug'] = str_replace(' ', '-', preg_replace('/[^a-z0-9 -]+/', '', trim(strtolower($params['slug']))));
   }
 
   $fhandle = fopen("{$env['app-root']}/posts/{$params['id']}.yml", 'w');
@@ -212,10 +226,17 @@ function save_post($params) {
   fclose($fhandle);
   
   $env['post-slugs'][$params['slug']] = $params['id'];
-  $fhandle = fopen("{$env['app-root']}/posts/post_slugs.php", 'w');
-  fwrite($fhandle, '<?php $post_slugs=' . var_export($env['post-slugs'], true) . ';');
+  save_slugs();
   
   return $params;
+}
+
+function save_slugs() {
+  global $env;
+  
+  $fhandle = fopen("{$env['app-root']}/posts/post_slugs.php", 'w');
+  fwrite($fhandle, '<?php $post_slugs=' . var_export($env['post-slugs'], true) . ';');
+  fclose($fhandle);
 }
 
 function render($template, $data, $layout = 'theme') {
