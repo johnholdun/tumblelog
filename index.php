@@ -60,6 +60,7 @@ function dispatch($method, $path) {
     case 'edit':
       $post_id = $url_parts[1];
       edit_post($post_id, $_POST['post']);
+      break;
       
     case 'delete':
       if ($method == 'post') {
@@ -67,6 +68,7 @@ function dispatch($method, $path) {
         delete_post($post_id);
         redirect_to($root);
       }
+      break;
   }    
 }
 
