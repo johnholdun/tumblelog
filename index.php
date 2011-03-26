@@ -8,6 +8,8 @@ if (substr($path, -1) == '/') {
   $path = substr($path, 0, -1);
 }
 
+require_once "$app_root/lib/markdown.php";
+require_once "$app_root/lib/smartypants.php";
 require_once "$app_root/lib/sfYaml/sfYaml.php";
 $site  = sfYaml::load("$app_root/config/site.yml");
 $types = sfYaml::load("$app_root/config/post-types.yml");
@@ -115,8 +117,19 @@ function new_post($type, $params = null) {
     if (!isset($params['id'])) {
       $params['id'] = time();
     }
-
+    
     $fhandle = fopen("$app_root/posts/{$params['id']}.yml", 'w');
+        
+    foreach ($params as $field => &$param) {
+      if ($field == 'id' || $field == 'type') continue;
+
+      $field_type = $types[$params['type']][$field];
+      if ($field_type == 'string' || $field_type == 'text') {
+        $param = Markdown(SmartyPants(stripslashes($param)));
+      }
+
+      // $param = superhtmlentities($param);
+    }
 
     fwrite($fhandle, sfYaml::dump($params));
     fclose($fhandle);
@@ -173,4 +186,20 @@ function render($template, $data, $layout = 'theme') {
 
 function redirect_to($url) {
   header("Location: $url");
+}
+
+function superhtmlentities($string) { 
+  $entities = array(128 => 'euro', 130 => 'sbquo', 131 => 'fnof', 132 => 'bdquo', 133 => 'hellip', 134 => 'dagger', 135 => 'Dagger', 136 => 'circ', 137 => 'permil', 138 => 'Scaron', 139 => 'lsaquo', 140 => 'OElig', 145 => 'lsquo', 146 => 'rsquo', 147 => 'ldquo', 148 => 'rdquo', 149 => 'bull', 150 => '#45', 151 => 'mdash', 152 => 'tilde', 153 => 'trade', 154 => 'scaron', 155 => 'rsaquo', 156 => 'oelig', 159 => 'Yuml'); 
+
+  foreach(str_split($string) as $char) { 
+    $num = ord($char);
+    if (array_key_exists($num, $entities)) { 
+      if ($num == 150) { $output .= '-'; }
+      else { $output .= "&{$entities[$num]};"; }
+    } else { 
+      if ($num < 127 || $num > 159) {  $output .= $char; }
+    } 
+  }
+  
+  return $output; 
 }
