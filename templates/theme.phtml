@@ -1,18 +1,18 @@
 <html>
   <head>
-    <title><?= $site['title'] ?></title>
-    <link rel="shortcut icon" href="<?= $site['favicon'] ?>">
+    <title><?= $config['site']['title'] ?></title>
+    <link rel="shortcut icon" href="<?= $config['site']['favicon'] ?>">
     <link rel="alternate" type="application/rss+xml" href="<?= $root ?>/rss">
     <link rel="stylesheet" href="<?= $root ?>/style.css">
-    <? if ($site['description']): ?>
-      <meta name="description" content="<?= $site['metadescription'] ?>">
+    <? if ($config['site']['description']): ?>
+      <meta name="description" content="<?= $config['site']['metadescription'] ?>">
     <? endif; ?>
   </head>
   <body>
-    <h1><a href="<?= $root ?>"><?= $site['title'] ?></a></h1>
+    <h1><a href="<?= $root ?>"><?= $config['site']['title'] ?></a></h1>
 
-    <? if ($site['description']): ?>
-      <p id="description"><?= $site['description'] ?></p>
+    <? if ($config['site']['description']): ?>
+      <p id="description"><?= $config['site']['description'] ?></p>
     <? endif; ?>
 
     <?= $content_for_layout ?>

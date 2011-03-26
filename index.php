@@ -12,15 +12,14 @@ require_once "$app_root/lib/markdown.php";
 require_once "$app_root/lib/smartypants.php";
 require_once "$app_root/lib/sfYaml/sfYaml.php";
 require_once "$app_root/posts/post_slugs.php";
-$site  = sfYaml::load("$app_root/config/site.yml");
-$types = sfYaml::load("$app_root/config/post-types.yml");
+require_once "$app_root/config.php";
 
 date_default_timezone_set('GMT'); # what
 
 dispatch($method, $path);
 
 function dispatch($method, $path) {
-  global $app_root, $root, $types, $post_slugs;
+  global $app_root, $root, $config, $post_slugs;
   
   $url_parts = explode('/', substr($path, 1));
   
@@ -112,31 +111,31 @@ function get_post($id, $kind = 'posts') {
 }
 
 function new_post($type, $params = null) {
-  global $app_root, $root, $types;
+  global $app_root, $root, $config;
   
   if ($params) {
     $post = save_post($params);
     redirect_to_post($post);
     die;
-  } else if (isset($type) && in_array($type, array_keys($types))) {
-    $fields = $types[$type];
+  } else if (isset($type) && in_array($type, array_keys($config['post-types']))) {
+    $fields = $config['post-types'][$type];
 
     render('form', array('fields' => $fields, 'type' => $type), 'internal');
   } else {
-    render('choose-type', array('types' => $types), 'internal');
+    render('choose-type', array('types' => $config['post-types']), 'internal');
   }
   
 }
 
 function edit_post($id, $params = null) {
-  global $app_root, $root, $types;
+  global $app_root, $root, $config;
   
   if ($params) {
     new_post(null, $params);
     die;
   } else {
     $post = sfYaml::load("posts/$id.yml");
-    $fields = $types[$post['type']];
+    $fields = $config['post-types'][$post['type']];
     
     render('form', array('fields' => $fields, 'type' => $type, 'post' => $post), 'internal');
   }
@@ -148,7 +147,7 @@ function delete_post($id) {
 }
 
 function save_post($params) {
-  global $app_root, $types, $post_slugs;
+  global $app_root, $config, $post_slugs;
   
   if (!isset($params['id'])) {
     $params['id'] = time();
@@ -162,7 +161,7 @@ function save_post($params) {
     } else {
       foreach($params as $field => $value) {
         if (!strlen($value)) { continue; }
-        $field_type = $types[$params['type']][$field];
+        $field_type = $config['post-types'][$params['type']][$field];
         if ($field_type == 'string' || $field_type == 'text') {
           $slugified_words = explode(' ', preg_replace('/[^a-z0-9 ]/', '', strip_tags(strtolower($value))));
           $slug = array_shift($slugified_words);
@@ -189,7 +188,7 @@ function save_post($params) {
   foreach ($params as $field => &$param) {
     if ($field == 'id' || $field == 'type') continue;
 
-    $field_type = $types[$params['type']][$field];
+    $field_type = $config['post-types'][$params['type']][$field];
     if ($field_type == 'string' || $field_type == 'text') {
       $param = SmartyPants(stripslashes($param));
 
@@ -212,7 +211,7 @@ function save_post($params) {
 }
 
 function render($template, $data, $layout = 'theme') {
-  global $site, $root, $app_root; # oops
+  global $config, $root, $app_root; # oops
     
   if ($template == 'permalink') {
     # we only have one post here
