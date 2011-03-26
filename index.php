@@ -11,6 +11,7 @@ if (substr($path, -1) == '/') {
 require_once "$app_root/lib/markdown.php";
 require_once "$app_root/lib/smartypants.php";
 require_once "$app_root/lib/sfYaml/sfYaml.php";
+require_once "$app_root/posts/post_slugs.php";
 $site  = sfYaml::load("$app_root/config/site.yml");
 $types = sfYaml::load("$app_root/config/post-types.yml");
 
@@ -19,7 +20,7 @@ date_default_timezone_set('GMT'); # what
 dispatch($method, $path);
 
 function dispatch($method, $path) {
-  global $app_root, $root, $types;
+  global $app_root, $root, $types, $post_slugs;
   
   $url_parts = explode('/', substr($path, 1));
   
@@ -53,10 +54,6 @@ function dispatch($method, $path) {
       render('posts', array('index' => true, 'permalink' => false, 'posts' => get_posts('posts', intval($url_parts[1]))));
       break;
       
-    case 'post':
-      render('posts', array('index' => false, 'permalink' => true, 'posts' => array(get_post($url_parts[1]))));
-      break;
-      
     case 'edit':
       $post_id = $url_parts[1];
       edit_post($post_id, $_POST['post']);
@@ -69,7 +66,12 @@ function dispatch($method, $path) {
         redirect_to($root);
       }
       break;
-  }    
+      
+    default:
+      if (array_key_exists($url_parts[0], $post_slugs)) {
+        render('posts', array('index' => false, 'permalink' => true, 'posts' => array(get_post($post_slugs[$url_parts[0]]))));
+      }
+  }
 }
 
 function get_posts($kind = 'posts', $page = 0, $per_page = 10) {
@@ -106,37 +108,15 @@ function get_post($id, $kind = 'posts') {
   
   $post = sfYaml::Load("$kind/$id.yml");
 
-  $post['published'] = strftime($post['id']);
-  $post['permalink'] = "{$root}/post/{$post['id']}";
-
-  return $post;
+  return fill_generated_post_fields($post);
 }
 
 function new_post($type, $params = null) {
   global $app_root, $root, $types;
   
   if ($params) {
-    if (!isset($params['id'])) {
-      $params['id'] = time();
-    }
-    
-    $fhandle = fopen("$app_root/posts/{$params['id']}.yml", 'w');
-        
-    foreach ($params as $field => &$param) {
-      if ($field == 'id' || $field == 'type') continue;
-
-      $field_type = $types[$params['type']][$field];
-      if ($field_type == 'string' || $field_type == 'text') {
-        $param = Markdown(SmartyPants(stripslashes($param)));
-      }
-
-      $param = superhtmlentities($param);
-    }
-    
-    fwrite($fhandle, sfYaml::dump($params));
-    fclose($fhandle);
-
-    redirect_to("$root/post/{$params['id']}");
+    $post = save_post($params);
+    redirect_to_post($post);
     die;
   } else if (isset($type) && in_array($type, array_keys($types))) {
     $fields = $types[$type];
@@ -167,6 +147,70 @@ function delete_post($id) {
   redirect_to($root);
 }
 
+function save_post($params) {
+  global $app_root, $types, $post_slugs;
+  
+  if (!isset($params['id'])) {
+    $params['id'] = time();
+  }
+  
+  if (!isset($params['slug']) || !strlen($params['slug'])) {
+    $slugs = array_keys($post_slugs);
+    $last_slug = $slugs[-1];
+    if (is_numeric($last_slug) && !array_key_exists($next_slug = strval(intval($last_slug) + 1))) {
+      $params['slug'] = $next_slug;
+    } else {
+      foreach($params as $field => $value) {
+        if (!strlen($value)) { continue; }
+        $field_type = $types[$params['type']][$field];
+        if ($field_type == 'string' || $field_type == 'text') {
+          $slugified_words = explode(' ', preg_replace('/[^a-z0-9 ]/', '', strip_tags(strtolower($value))));
+          $slug = array_shift($slugified_words);
+          foreach ($slugified_words as $word) {
+            if (strlen($slug . "-$word") <= 30) {
+              $slug .= "-$word";              
+            }
+          }
+          $base_slug = $slug;
+          $n = 2;
+          while (array_key_exists($slug, $post_slugs)) {
+            $slug = "$base_slug-$n";
+            $n++;
+          }
+          $params['slug'] = $slug;
+          break;
+        }
+      }
+    }
+  }
+
+  $fhandle = fopen("$app_root/posts/{$params['id']}.yml", 'w');
+
+  foreach ($params as $field => &$param) {
+    if ($field == 'id' || $field == 'type') continue;
+
+    $field_type = $types[$params['type']][$field];
+    if ($field_type == 'string' || $field_type == 'text') {
+      $param = SmartyPants(stripslashes($param));
+
+      if ($field_type == 'text') {
+        $param = Markdown($param);
+      }
+    }
+
+    $param = superhtmlentities($param);
+  }
+
+  fwrite($fhandle, sfYaml::dump($params));
+  fclose($fhandle);
+  
+  $post_slugs[$params['slug']] = $params['id'];
+  $fhandle = fopen("$app_root/posts/post_slugs.php", 'w');
+  fwrite($fhandle, '<?php $post_slugs=' . var_export($post_slugs, true) . ';');
+  
+  return $params;
+}
+
 function render($template, $data, $layout = 'theme') {
   global $site, $root, $app_root; # oops
     
@@ -186,8 +230,22 @@ function render($template, $data, $layout = 'theme') {
   return;
 }
 
+function fill_generated_post_fields($post) {
+  global $root;
+  
+  $post['published'] = strftime($post['id']);
+  $post['permalink'] = "{$root}/{$post['slug']}";
+  
+  return $post;
+}
+
 function redirect_to($url) {
   header("Location: $url");
+}
+
+function redirect_to_post($post) {
+  $post = fill_generated_post_fields($post);
+  redirect_to($post['permalink']);
 }
 
 function superhtmlentities($string) { 

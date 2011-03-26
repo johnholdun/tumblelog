@@ -26,6 +26,10 @@
         <? endif; ?>
       </li>
     <? endforeach; ?>
+    <li>
+      <label for="post_slug">Slug (leave blank for default)</label>
+      <input type="text" id="post_slug" name="post[slug]" value="<?= $post['slug'] ?>">
+    </li>
     <li class="buttons">
       <? if ($post): ?>
         <input type="hidden" name="post[id]" value="<?= $post['id'] ?>">
