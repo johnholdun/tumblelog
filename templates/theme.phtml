@@ -1,18 +1,18 @@
 <html>
   <head>
-    <title><?= $config['site']['title'] ?></title>
-    <link rel="shortcut icon" href="<?= $config['site']['favicon'] ?>">
-    <link rel="alternate" type="application/rss+xml" href="<?= $root ?>/rss">
-    <link rel="stylesheet" href="<?= $root ?>/style.css">
-    <? if ($config['site']['description']): ?>
-      <meta name="description" content="<?= $config['site']['metadescription'] ?>">
+    <title><?= $env['site']['title'] ?></title>
+    <link rel="shortcut icon" href="<?= $env['site']['favicon'] ?>">
+    <link rel="alternate" type="application/rss+xml" href="<?= $env['root'] ?>/rss">
+    <link rel="stylesheet" href="<?= $env['root'] ?>/style.css">
+    <? if ($env['site']['description']): ?>
+      <meta name="description" content="<?= $env['site']['metadescription'] ?>">
     <? endif; ?>
   </head>
   <body>
-    <h1><a href="<?= $root ?>"><?= $config['site']['title'] ?></a></h1>
+    <h1><a href="<?= $env['root'] ?>"><?= $env['site']['title'] ?></a></h1>
 
-    <? if ($config['site']['description']): ?>
-      <p id="description"><?= $config['site']['description'] ?></p>
+    <? if ($env['site']['description']): ?>
+      <p id="description"><?= $env['site']['description'] ?></p>
     <? endif; ?>
 
     <?= $content_for_layout ?>

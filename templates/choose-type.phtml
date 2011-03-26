@@ -1,6 +1,6 @@
 <? $title = 'Choose a Post Type'; ?>
 <ul id="choose-type">
   <? foreach($types as $type => $fields): ?>
-    <li><a href="<?= $root ?>/new/<?= $type ?>"><?= ucfirst($type) ?></a></li>
+    <li><a href="<?= $env['root'] ?>/new/<?= $type ?>"><?= ucfirst($type) ?></a></li>
   <? endforeach; ?>
 </ul>

@@ -80,11 +80,11 @@
 
 <? if ($permalink): ?>
   <div id="controls">
-    <a href="<?= $root ?>/edit/<?= $post['id'] ?>">Edit</a>
-    <form onsubmit="return confirm('Are you sure you want to delete this post? When it\'s gone, it\'s gone.')" method="post" action="<?= $root ?>/delete/<?= $post['id'] ?>"><button>Delete</button></form>
+    <a href="<?= $env['root'] ?>/edit/<?= $post['id'] ?>">Edit</a>
+    <form onsubmit="return confirm('Are you sure you want to delete this post? When it\'s gone, it\'s gone.')" method="post" action="<?= $env['root'] ?>/delete/<?= $post['id'] ?>"><button>Delete</button></form>
   </div>
 <? else: ?>
   <div id="controls">
-    <a href="<?= $root ?>/new">Post</a>
+    <a href="<?= $env['root'] ?>/new">Post</a>
   </div>
 <? endif; ?>

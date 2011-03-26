@@ -1,6 +1,6 @@
 <?php
 
-$config = array(
+$env = array(
   'site' => array(
     'title' => 'My Tumblelog',
     'description' => 'The Quick Brown Fox Jumps Over the Lazy Dog'

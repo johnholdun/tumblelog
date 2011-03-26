@@ -1,31 +1,37 @@
 <?php
 
-$app_root = dirname(__FILE__);
-$root = str_replace('/' . basename(__FILE__), '', $_SERVER['PHP_SELF']);
-$method = strtolower($_SERVER['REQUEST_METHOD']);
-$path = str_replace($root, '', $_SERVER['REQUEST_URI']);
-if (substr($path, -1) == '/') {
-  $path = substr($path, 0, -1);
-}
+require_once "./lib/markdown.php";
+require_once "./lib/smartypants.php";
+require_once "./lib/sfYaml/sfYaml.php";
 
-require_once "$app_root/lib/markdown.php";
-require_once "$app_root/lib/smartypants.php";
-require_once "$app_root/lib/sfYaml/sfYaml.php";
-require_once "$app_root/posts/post_slugs.php";
-require_once "$app_root/config.php";
+require_once "./config.php";
+require_once "./posts/post_slugs.php";
+
+$env['post-slugs'] = $post_slugs;
+
+$env['app-root'] = dirname(__FILE__);
+$env['root'] = str_replace('/' . basename(__FILE__), '', $_SERVER['PHP_SELF']);
+$env['request'] = array(
+  'method' => strtolower($_SERVER['REQUEST_METHOD']),
+  'path' => str_replace($env['root'], '', $_SERVER['REQUEST_URI'])
+);
+
+if (substr($env['request']['path'], -1) == '/') {
+  $env['request']['path'] = substr($env['request']['path'], 0, -1);
+}
 
 date_default_timezone_set('GMT'); # what
 
-dispatch($method, $path);
+dispatch($env['request']);
 
-function dispatch($method, $path) {
-  global $app_root, $root, $config, $post_slugs;
+function dispatch($request) {
+  global $env;
   
-  $url_parts = explode('/', substr($path, 1));
+  $url_parts = explode('/', substr($request['path'], 1));
   
   if (count($url_parts) == 1 && $url_parts[0] == '') {
     $url_parts = array('page', 0);
-  } else if ($method == 'get' && file_exists($public_path = "$app_root/public/$path")) {
+  } else if ($request['method'] == 'get' && file_exists($public_path = "{$env['app-root']}/public/{$request['path']}")) {
     # allow files in the public directory to pass through
     # (stripping public/ from their filenames, natch)
 
@@ -35,7 +41,7 @@ function dispatch($method, $path) {
       'js'  => 'text/javascript'
     );
     
-    $content_type = $filetypes[array_pop(explode('.', $path))];
+    $content_type = $filetypes[array_pop(explode('.', $request['path']))];
     if ($content_type)
       header("Content-Type: $content_type");
     
@@ -59,16 +65,16 @@ function dispatch($method, $path) {
       break;
       
     case 'delete':
-      if ($method == 'post') {
+      if ($request['method'] == 'post') {
         $post_id = $url_parts[1];
         delete_post($post_id);
-        redirect_to($root);
+        redirect_to($env['root']);
       }
       break;
       
     default:
-      if (array_key_exists($url_parts[0], $post_slugs)) {
-        render('posts', array('index' => false, 'permalink' => true, 'posts' => array(get_post($post_slugs[$url_parts[0]]))));
+      if (array_key_exists($url_parts[0], $env['post-slugs'])) {
+        render('posts', array('index' => false, 'permalink' => true, 'posts' => array(get_post($env['post-slugs'][$url_parts[0]]))));
       }
   }
 }
@@ -103,7 +109,7 @@ function get_posts($kind = 'posts', $page = 0, $per_page = 10) {
 }
 
 function get_post($id, $kind = 'posts') {
-  global $root;
+  global $env;
   
   $post = sfYaml::Load("$kind/$id.yml");
 
@@ -111,57 +117,59 @@ function get_post($id, $kind = 'posts') {
 }
 
 function new_post($type, $params = null) {
-  global $app_root, $root, $config;
+  global $env;
   
   if ($params) {
     $post = save_post($params);
     redirect_to_post($post);
     die;
-  } else if (isset($type) && in_array($type, array_keys($config['post-types']))) {
-    $fields = $config['post-types'][$type];
+  } else if (isset($type) && in_array($type, array_keys($env['post-types']))) {
+    $fields = $env['post-types'][$type];
 
     render('form', array('fields' => $fields, 'type' => $type), 'internal');
   } else {
-    render('choose-type', array('types' => $config['post-types']), 'internal');
+    render('choose-type', array('types' => $env['post-types']), 'internal');
   }
   
 }
 
 function edit_post($id, $params = null) {
-  global $app_root, $root, $config;
+  global $env;
   
   if ($params) {
     new_post(null, $params);
     die;
   } else {
     $post = sfYaml::load("posts/$id.yml");
-    $fields = $config['post-types'][$post['type']];
+    $fields = $env['post-types'][$post['type']];
     
     render('form', array('fields' => $fields, 'type' => $type, 'post' => $post), 'internal');
   }
 }
 
 function delete_post($id) {
+  global $env;
+  
   unlink("posts/$id.yml");
-  redirect_to($root);
+  redirect_to($env['root']);
 }
 
 function save_post($params) {
-  global $app_root, $config, $post_slugs;
+  global $env;
   
   if (!isset($params['id'])) {
     $params['id'] = time();
   }
   
   if (!isset($params['slug']) || !strlen($params['slug'])) {
-    $slugs = array_keys($post_slugs);
+    $slugs = array_keys($env['post-slugs']);
     $last_slug = $slugs[-1];
     if (is_numeric($last_slug) && !array_key_exists($next_slug = strval(intval($last_slug) + 1))) {
       $params['slug'] = $next_slug;
     } else {
       foreach($params as $field => $value) {
         if (!strlen($value)) { continue; }
-        $field_type = $config['post-types'][$params['type']][$field];
+        $field_type = $env['post-types'][$params['type']][$field];
         if ($field_type == 'string' || $field_type == 'text') {
           $slugified_words = explode(' ', preg_replace('/[^a-z0-9 ]/', '', strip_tags(strtolower($value))));
           $slug = array_shift($slugified_words);
@@ -172,7 +180,7 @@ function save_post($params) {
           }
           $base_slug = $slug;
           $n = 2;
-          while (array_key_exists($slug, $post_slugs)) {
+          while (array_key_exists($slug, $env['post-slugs'])) {
             $slug = "$base_slug-$n";
             $n++;
           }
@@ -183,12 +191,12 @@ function save_post($params) {
     }
   }
 
-  $fhandle = fopen("$app_root/posts/{$params['id']}.yml", 'w');
+  $fhandle = fopen("{$env['app-root']}/posts/{$params['id']}.yml", 'w');
 
   foreach ($params as $field => &$param) {
     if ($field == 'id' || $field == 'type') continue;
 
-    $field_type = $config['post-types'][$params['type']][$field];
+    $field_type = $env['post-types'][$params['type']][$field];
     if ($field_type == 'string' || $field_type == 'text') {
       $param = SmartyPants(stripslashes($param));
 
@@ -203,15 +211,15 @@ function save_post($params) {
   fwrite($fhandle, sfYaml::dump($params));
   fclose($fhandle);
   
-  $post_slugs[$params['slug']] = $params['id'];
-  $fhandle = fopen("$app_root/posts/post_slugs.php", 'w');
-  fwrite($fhandle, '<?php $post_slugs=' . var_export($post_slugs, true) . ';');
+  $env['post-slugs'][$params['slug']] = $params['id'];
+  $fhandle = fopen("{$env['app-root']}/posts/post_slugs.php", 'w');
+  fwrite($fhandle, '<?php $post_slugs=' . var_export($env['post-slugs'], true) . ';');
   
   return $params;
 }
 
 function render($template, $data, $layout = 'theme') {
-  global $config, $root, $app_root; # oops
+  global $env;
     
   if ($template == 'permalink') {
     # we only have one post here
@@ -220,20 +228,20 @@ function render($template, $data, $layout = 'theme') {
   
   ob_start();
   extract($data);
-  include "$app_root/templates/$template.phtml";
+  include "{$env['app-root']}/templates/$template.phtml";
   $content_for_layout = ob_get_contents();
   ob_end_clean();
   
   
-  include "$app_root/templates/$layout.phtml";
+  include "{$env['app-root']}/templates/$layout.phtml";
   return;
 }
 
 function fill_generated_post_fields($post) {
-  global $root;
+  global $env;
   
   $post['published'] = strftime($post['id']);
-  $post['permalink'] = "{$root}/{$post['slug']}";
+  $post['permalink'] = "{$env['root']}/{$post['slug']}";
   
   return $post;
 }
