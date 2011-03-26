@@ -1,0 +1,13 @@
+<html>
+  <head>
+    <title>
+      Tumblelog
+      <? if ($title): ?> &ndash; <?= $title ?><? endif; ?>
+    </title>
+    <link rel="stylesheet" href="<?= $root ?>/internal.css">
+  </head>
+  <body>
+    <? if ($title): ?><h1><?= $title ?></h1><? endif; ?>
+    <?= $content_for_layout ?>
+  </body>
+</html>

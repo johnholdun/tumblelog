@@ -22,6 +22,18 @@ function dispatch($path) {
   
   if (count($url_parts) == 1 && $url_parts[0] == '') {
     $url_parts = array('page', 0);
+  } else if (file_exists($public_path = "$app_root/public/$path")) {
+    $filetypes = array(
+      'css' => 'text/css',
+      'js'  => 'text/javascript'
+    );
+    
+    $content_type = $filetypes[array_pop(explode('.', $path))];
+    if ($content_type)
+      header("Content-Type: $content_type");
+    
+    echo file_get_contents($public_path);
+    die;
   }
   
   switch($url_parts[0]) {
@@ -31,11 +43,11 @@ function dispatch($path) {
       break;
       
     case 'page':
-      render('index', get_posts('posts', intval($url_parts[1])));
+      render('posts', array('posts' => get_posts('posts', intval($url_parts[1]))));
       break;
       
     case 'post':
-      render('permalink', get_post($url_parts[1]));
+      render('posts', array('posts' => array(get_post($url_parts[1]))));
       break;
   }    
 }
@@ -70,7 +82,14 @@ function get_posts($kind = 'posts', $page = 0, $per_page = 10) {
 }
 
 function get_post($id, $kind = 'posts') {
-  return sfYaml::Load("$kind/$id.yml");
+  global $root;
+  
+  $post = sfYaml::Load("$kind/$id.yml");
+
+  $post['published'] = strftime($post['id']);
+  $post['permalink'] = "{$root}/post/{$post['id']}";
+
+  return $post;
 }
 
 function new_post($type, $params = null) {
@@ -91,29 +110,28 @@ function new_post($type, $params = null) {
   } else if (isset($type) && in_array($type, array_keys($types))) {
     $fields = $types[$type];
 
-    include "$app_root/templates/form.phtml";
+    render('form', array('fields' => $fields, 'type' => $type), 'internal');
   } else {
-    include "$app_root/templates/choose-type.phtml";
+    render('choose-type', array('types' => $types), 'internal');
   }
   
 }
 
-function render($template, $posts, $layout = 'default') {
-  global $site, $root; # oops
+function render($template, $data, $layout = 'theme') {
+  global $site, $root, $app_root; # oops
     
   if ($template == 'permalink') {
     # we only have one post here
     $posts = array($posts);
   }
   
-  # if we were OO here (and we oughta be), this is where we'd fill in
-  # stuff like permalink URLs and default values. oh wait let's do that
+  ob_start();
+  extract($data);
+  include "$app_root/templates/$template.phtml";
+  $content_for_layout = ob_get_contents();
+  ob_end_clean();
   
-  foreach($posts as &$post) {
-    $post['published'] = strftime($post['id']);
-    $post['permalink'] = "{$root}/post/{$post['id']}";
-  }
   
-  include "$root/templates/theme.phtml";
+  include "$app_root/templates/$layout.phtml";
   return;
 }

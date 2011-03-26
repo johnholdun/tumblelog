@@ -1,0 +1,4 @@
+html, body, ul, ol, div { margin: 0; padding: 0; }
+body { width: 500px; margin: 24px auto; }
+#posts { list-style: none; }
+#posts > li { padding-bottom: 11px; border-bottom: 1px solid #CCC; margin-bottom: 24px; }

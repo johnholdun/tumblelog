@@ -1,12 +1,18 @@
+<? $title = "Make yourself a nice new little $type post there why don&rsquo;t you"; ?>
 <form method="post">
   <ul>
-    <? foreach ($fields as $field => $field_type): ?>
+    <? foreach ($fields as $field => $field_type):
+      if (!isset($autofocus)) {
+        $autofocus = ' autofocus';
+      } else {
+        $autofocus = '';
+      } ?>
       <li>
         <label for="post_<?= $field ?>"><?= ucfirst($field) ?></label>
         <? if ($field_type == 'text'): ?>
-          <textarea  id="post_<?= $field ?>" name="post[<?= $field ?>]"></textarea>
+          <textarea id="post_<?= $field ?>" name="post[<?= $field ?>]"<?= $autofocus ?>></textarea>
         <? else: ?>
-           <input id="post_<?= $field ?>" name="post[<?= $field ?>]">
+           <input type="text" id="post_<?= $field ?>" name="post[<?= $field ?>]"<?= $autofocus ?>>
         <? endif; ?>
       </li>
     <? endforeach; ?>

@@ -1,0 +1,14 @@
+html, body, ul, ol, div { margin: 0; padding: 0; }
+body { width: 500px; margin: 24px auto; background: #001; color: #EEE; }
+body, h1, p, li, label, input, textarea, button { font-family: "Lucida Grande"; font-size: 16px; line-height: 24px; }
+h1 { font-size: 36px; line-height: 60px; }
+form li { list-style: none; margin-bottom: 12px; }
+label { display: block; }
+button { display: block; }
+input[type=text], textarea { border: 1px solid #CCF; padding: 2px; width: 500px; }
+textarea { height: 120px; }
+input:focus, textarea:focus, button:focus { outline: 2px solid #909; -webkit-box-shadow: 0 0 48px #FFF; }
+
+#choose-type li { list-style: none; margin-bottom: 12px; float: left; width: 50%; }
+#choose-type a { display: block; text-align: center; padding: 12px; background: #003; margin-right: 12px; color: #FFF; text-decoration: none; }
+#choose-type a:hover { background: #335; }

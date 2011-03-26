@@ -3,8 +3,9 @@
     <title><?= $site['title'] ?></title>
     <link rel="shortcut icon" href="<?= $site['favicon'] ?>">
     <link rel="alternate" type="application/rss+xml" href="<?= $root ?>/rss">
+    <link rel="stylesheet" href="<?= $root ?>/style.css">
     <? if ($site['description']): ?>
-      <meta name="description" content="<?= $site['metadescription'] ?>" />
+      <meta name="description" content="<?= $site['metadescription'] ?>">
     <? endif; ?>
   </head>
   <body>
@@ -14,80 +15,6 @@
       <p id="description"><?= $site['description'] ?></p>
     <? endif; ?>
 
-    <ol id="posts">
-      <? foreach ($posts as &$post): ?>
-        <li class="post <?= $post['type'] ?>">
-        <? switch ($post['type']):
-          case 'text': ?>
-            <? if ($post['title']): ?>
-              <h3><a href="<?= $post['permalink'] ?>"><?= $post['title'] ?></a></h3>
-            <? endif; ?>
-
-            <?= $post['body'] ?>
-          </li>
-        <? break;
-           case 'photo': ?>
-          <img src="<?= $post['url'] ?>">
-
-          <? if ($post['caption']): ?>
-            <div class="caption"><?= $post['caption'] ?></div>
-          <? endif; ?>
-        <? break;
-           case 'photoset': ?>
-          <?= $post['photoset'] ?>
-
-          <? if ($post['caption']): ?>
-            <div class="caption"><?= $post['caption'] ?></div>
-          <? endif; ?>
-        <? break;
-           case 'quote': ?>
-          "<?= $post['text'] ?>"
-
-          <? if ($post['source']): ?>
-            <div class="source"><?= $post['source'] ?></div>
-          <? endif; ?>
-        <? break;
-           case 'link': ?>
-          <a href="<?= $post['url'] ?>" class="link" <?= $post['target'] ?>><?= $post['name'] ?></a>
-
-          <? if ($post['description']): ?>
-            <div class="description"><?= $post['description'] ?></div>
-          <? endif; ?>
-        <? break;
-           case 'chat': ?>
-          <? if ($post['title']): ?>
-            <h3><a href="<?= $post['permalink'] ?>"><?= $post['title'] ?></a></h3>
-          <? endif; ?>
-        <? break;
-           case 'video': ?>
-          <?= $post['embed'] ?>
-
-          <? if ($post['caption']): ?>
-            <div class="caption"><?= $post['caption'] ?></div>
-          <? endif; ?>
-        <? break;
-           case 'audio': ?>
-          <?= $post['embed'] ?>
-
-          <? if ($post['caption']): ?>
-            <div class="caption"><?= $post['caption'] ?></div>
-          <? endif; ?>
-        <?  break;
-          endswitch; ?>
-          
-          <p class="date"><a href="<?= $post['permalink'] ?>"><?= strftime('%B %e %H:%M', $post['published']) ?></a></p>
-        </li>
-      <? endforeach; ?>
-    </ol>
-
-    <p id="footer">
-      <? if ($pages['previous']): ?>
-        <a href="<?= $pages['previous'] ?>">&#171; Previous</a>
-      <? endif; ?>
-
-      <? if ($pages['next']): ?>
-        <a href="<?= $pages['next'] ?>">Next &#187;</a>
-      <? endif; ?>
-    </p>
+    <?= $content_for_layout ?>
   </body>
 </html>
