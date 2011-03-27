@@ -9,7 +9,8 @@
     'link' => 
     array (
       'url' => 'string',
-      'text' => 'text',
+      'label' => 'string',
+      'description' => 'text',
     ),
     'quote' => 
     array (
