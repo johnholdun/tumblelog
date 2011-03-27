@@ -5,7 +5,7 @@ h1 { font-size: 36px; line-height: 60px; }
 form li { list-style: none; margin-bottom: 12px; }
 label { display: block; }
 button { display: block; }
-input[type=text], textarea { border: 1px solid #CCF; padding: 2px; width: 500px; }
+input[type=text], input[type=password], textarea { border: 1px solid #CCF; padding: 2px; width: 500px; }
 textarea { height: 120px; }
 input:focus, textarea:focus, button:focus { outline: 2px solid #909; -webkit-box-shadow: 0 0 48px #FFF; }
 

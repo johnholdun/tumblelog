@@ -1,34 +1,64 @@
 <?php
 
-require_once 'lib/markdown.php';
-require_once 'lib/smartypants.php';
-require_once 'lib/sfYaml/sfYaml.php';
+require 'lib/markdown.php';
+require 'lib/smartypants.php';
+require 'lib/sfYaml/sfYaml.php';
 
-try {
-  require_once 'config.php';
-} catch (Exception $e) {
-  require_once 'install.php';
-  die;
-}
+require 'config/env.php';
+require 'config/user.php';
+require "posts/post_slugs.php";
 
-require_once "./posts/post_slugs.php";
+$env = array_merge($env, array(
+  'authorized' => false,
+  'user' => $user,
+  'post-slugs' => $post_slugs,
+  'root' => str_replace('/' . basename(__FILE__), '', $_SERVER['PHP_SELF']),
+  'app-root' => dirname(__FILE__),
+  'request' => array(
+    'method' => strtolower($_SERVER['REQUEST_METHOD'])
+  )  
+));
 
-$env['post-slugs'] = $post_slugs;
-
-$env['app-root'] = dirname(__FILE__);
-$env['root'] = str_replace('/' . basename(__FILE__), '', $_SERVER['PHP_SELF']);
-$env['request'] = array(
-  'method' => strtolower($_SERVER['REQUEST_METHOD']),
-  'path' => str_replace($env['root'], '', $_SERVER['REQUEST_URI'])
-);
-
+$env['request']['path'] = str_replace($env['root'], '', $_SERVER['REQUEST_URI']);
 if (substr($env['request']['path'], -1) == '/') {
   $env['request']['path'] = substr($env['request']['path'], 0, -1);
 }
 
-date_default_timezone_set('GMT'); # what
+if ($env['request']['method'] == 'get' && $env['request']['path'] &&
+  file_exists($public_path = "{$env['app-root']}/public{$env['request']['path']}")) {
+  # allow files in the public directory to pass through
+  # (stripping public/ from their filenames, natch)
 
-dispatch($env['request']);
+  # first learn a little something about content types
+  $filetypes = array(
+    'css' => 'text/css',
+    'js'  => 'text/javascript'
+  );
+  
+  $content_type = $filetypes[array_pop(explode('.', $env['request']['path']))];
+  if ($content_type)
+    header("Content-Type: $content_type");
+  
+  echo file_get_contents($public_path);
+  die;
+}
+
+date_default_timezone_set('GMT');
+
+session_start();
+if (isset($_SESSION['_tumblelog_session']) &&
+    isset($env['user']['session_key']) &&
+    $env['user']['session_key'] == $_SESSION['_tumblelog_session']) {
+    $env['authorized'] = true;
+    set_user_session_key();
+}
+
+# do we have our settings?
+if (isset($env['site'])) {
+  dispatch($env['request']);
+} else {
+  dispatch(array('path' => '/settings', 'method' => $env['request']['method']));
+}
 
 function dispatch($request) {
   global $env;
@@ -37,45 +67,65 @@ function dispatch($request) {
   
   if (count($url_parts) == 1 && $url_parts[0] == '') {
     $url_parts = array('page', 0);
-  } else if ($request['method'] == 'get' && file_exists($public_path = "{$env['app-root']}/public/{$request['path']}")) {
-    # allow files in the public directory to pass through
-    # (stripping public/ from their filenames, natch)
-
-    # first learn a little something about content types
-    $filetypes = array(
-      'css' => 'text/css',
-      'js'  => 'text/javascript'
-    );
-    
-    $content_type = $filetypes[array_pop(explode('.', $request['path']))];
-    if ($content_type)
-      header("Content-Type: $content_type");
-    
-    echo file_get_contents($public_path);
-    die;
   }
   
   switch($url_parts[0]) {
-    case 'new':
-      $type = $url_parts[1];
-      new_post($type, $_POST['post']);
-      break;
-      
     case 'page':
       render('posts', array('index' => true, 'permalink' => false, 'posts' => get_posts('posts', intval($url_parts[1]))));
       break;
       
+    case 'new':
+      require_authorization();
+      $type = $url_parts[1];
+      new_post($type, $_POST['post']);
+      break;
+      
     case 'edit':
+      require_authorization();
       $post_id = $url_parts[1];
       edit_post($post_id, $_POST['post']);
       break;
       
     case 'delete':
+      require_authorization();
       if ($request['method'] == 'post') {
         $post_id = $url_parts[1];
         delete_post($post_id);
         redirect_to($env['root']);
       }
+      break;
+      
+    case 'settings':
+      if ($env['site']) require_authorization();
+      if ($request['method'] == 'post') {        
+        $env['site'] = $_POST['site'];
+        $env['user'] = $_POST['user'];
+        $env['user']['password'] = md5($env['user']['password']);
+        save_settings();
+        save_user();
+        
+        header("Location: {$env['root']}");
+      } else {
+        render('settings', array(), 'internal');
+      }
+      break;
+      
+    case 'login':
+      if ($request['method'] == 'post' && $_POST['user']['email'] == $env['user']['email'] && md5($_POST['user']['password']) == $env['user']['password']) {
+        set_user_session_key();
+        redirect_to($env['root']);
+      } else {
+        render('login', array('email' => $_POST['user']['email']), 'internal');        
+      }
+      break;
+      
+    case 'logout':
+      require_authorization();
+      unset($_SESSION['_tumblelog_session']);
+      unset($env['user']['session_key']);
+      save_user();
+      redirect_to($env['root']);
+      die;
       break;
       
     default:
@@ -205,7 +255,7 @@ function save_post($params) {
     $params['slug'] = str_replace(' ', '-', preg_replace('/[^a-z0-9 -]+/', '', trim(strtolower($params['slug']))));
   }
 
-  $fhandle = fopen("{$env['app-root']}/posts/{$params['id']}.yml", 'w');
+  $fhandle = fopen("posts/{$params['id']}.yml", 'w');
 
   foreach ($params as $field => &$param) {
     if ($field == 'id' || $field == 'type') continue;
@@ -234,12 +284,52 @@ function save_post($params) {
 function save_slugs() {
   global $env;
   
-  $fhandle = fopen("{$env['app-root']}/posts/post_slugs.php", 'w');
-  fwrite($fhandle, '<?php $post_slugs=' . var_export($env['post-slugs'], true) . ';');
-  fclose($fhandle);
+  save_config_file('posts/post_slugs.php', 'post_slugs', $env['post-slugs']);
 }
 
-function render($template, $data, $layout = 'theme') {
+function save_settings() {
+  global $env;
+
+  # just copy in the permanent stuff
+  $env_copy = array(
+    'site' => $env['site'],
+    'post-types' => $env['post-types']
+  );
+    
+  save_config_file('config/env.php', 'env', $env_copy);
+}
+
+function save_user() {
+  global $env;
+  save_config_file('config/user.php', 'user', $env['user']);
+}
+
+function save_config_file($filename, $var_name, $data) {
+  $fhandle = fopen($filename, 'w');
+  fwrite($fhandle, "<?php \${$var_name}=" . var_export($data, true) . ';');
+  fclose($fhandle); 
+}
+
+function set_user_session_key() {
+  global $env;
+  
+  # you should change this
+  $secret_key = 'il3kn324h23i3rb2f238ufvucb897ssd7f23n3nr2339vy987bvg7ds89f7dfb';
+  $env['user']['session_key'] = md5($secret_key . $env['user']['email'] . $env['user']['password'] . time());
+  $_SESSION['_tumblelog_session'] = $env['user']['session_key'];
+  save_user();
+}
+
+function require_authorization() {
+  global $env;
+  
+  if (!$env['authorized']) {
+    header("Location: {$env['root']}");
+    die;
+  }
+}
+
+function render($template, $data = array(), $layout = 'theme') {
   global $env;
     
   if ($template == 'permalink') {
@@ -249,12 +339,12 @@ function render($template, $data, $layout = 'theme') {
   
   ob_start();
   extract($data);
-  include "{$env['app-root']}/templates/$template.phtml";
+  include "templates/$template.phtml";
   $content_for_layout = ob_get_contents();
   ob_end_clean();
   
   
-  include "{$env['app-root']}/templates/$layout.phtml";
+  include "templates/$layout.phtml";
   return;
 }
 

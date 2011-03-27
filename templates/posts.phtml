@@ -78,13 +78,15 @@
   <? endif; ?>
 </p>
 
-<? if ($permalink): ?>
+<? if ($env['authorized']): ?>
   <div id="controls">
-    <a href="<?= $env['root'] ?>/edit/<?= $post['id'] ?>">Edit</a>
-    <form onsubmit="return confirm('Are you sure you want to delete this post? When it\'s gone, it\'s gone.')" method="post" action="<?= $env['root'] ?>/delete/<?= $post['id'] ?>"><button>Delete</button></form>
-  </div>
-<? else: ?>
-  <div id="controls">
-    <a href="<?= $env['root'] ?>/new">Post</a>
+    <? if ($permalink): ?>
+      <a href="<?= $env['root'] ?>/edit/<?= $post['id'] ?>">Edit</a>
+      <form onsubmit="return confirm('Are you sure you want to delete this post? When it\'s gone, it\'s gone.')" method="post" action="<?= $env['root'] ?>/delete/<?= $post['id'] ?>"><button>Delete</button></form>
+    <? else: ?>
+      <a href="<?= $env['root'] ?>/new">Post</a>
+    <? endif; ?>
+    <a href="<?= $env['root'] ?>/settings">Settings</a>
+    <a href="<?= $env['root'] ?>/logout">Logout</a>
   </div>
 <? endif; ?>

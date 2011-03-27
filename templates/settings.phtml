@@ -1,0 +1,24 @@
+<? $title = isset($env['site']) ? 'Settings' : 'We need to talk.'; ?>
+<form method="post">
+  <ul>
+    <li>
+      <label for="site_title">Title</label>
+      <input type="text" id="site_title" name="site[title]" value="<?= $env['site']['title'] ?>" autofocus>
+    </li>
+    <li>
+      <label for="site_description">Description</label>
+      <input type="text" id="site_description" name="site[description]" value="<?= $env['site']['description'] ?>">
+    </li>
+    <li>
+      <label for="user_email">Email</label>
+      <input type="text" id="user_email" name="user[email]" value="<?= $env['user']['email'] ?>">
+    </li>
+    <li>
+      <label for="user_password">Password</label>
+      <input type="password" id="user_password" name="user[password]">
+    </li>
+    <li>
+      <button>Save</button>
+    </li>
+  </ul>
+</form>

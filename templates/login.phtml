@@ -1,0 +1,16 @@
+<? $title = 'Log in'; ?>
+<form method="post">
+  <ul>
+    <li>
+      <label for="user_email">Email</label>
+      <input type="text" id="user_email" name="user[email]" value="<?= $email ?>" autofocus>
+    </li>
+    <li>
+      <label for="user_password">Password</label>
+      <input type="password" id="user_password" name="user[password]">
+    </li>
+    <li>
+      <button>Log in</button>
+    </li>
+  </ul>
+</form>
